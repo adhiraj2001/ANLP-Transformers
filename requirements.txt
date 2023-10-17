@@ -1,0 +1,41 @@
+numpy
+pandas
+scipy
+scikit-learn
+
+nltk
+# spacy
+# python3 -m spacy download en_core_web_sm, md
+
+gensim
+fasttext
+# cc.en.300.bin
+# wiki-news-300d-1M.vec.zip
+
+torch
+torchvision
+torchaudio
+
+wandb
+tqdm
+
+## Jupyter related (Remote environment)
+
+jupyterlab==3.6.4
+ipython
+ipykernel
+ipywidgets
+jupyterlab_widgets
+jupyterlab-vim
+jupyterlab-exectute-time
+# conda install -c conda-forge jupyterlab_vim
+
+
+## Conda (Local environment)
+
+# pynvim
+# conda install -n base -c conda-forge nb_conda_kernels (base)
+# conda install -n myenv -c conda-forge ipykernel (current)
+# conda install -n base -c conda-forge jupyterlab_widgets (base)
+# conda install -n myenv -c conda-forge ipywidgets (current)
+
