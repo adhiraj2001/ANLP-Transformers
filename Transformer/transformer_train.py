@@ -60,8 +60,14 @@ def create_sequence(X_arr, y_arr, word_map_en, word_map_fr, pad_flag=False, end_
     
     for i in range(len(X_arr)):
         if cutoff_len:
-            X_arr[i] = torch.tensor(X_arr[i][:cutoff_len], dtype=torch.long)
-            y_arr[i] = torch.tensor(y_arr[i][:cutoff_len], dtype=torch.long)
+            X_arr[i] = X_arr[i][:cutoff_len]
+            X_arr[i][-1] = word_map_en[end_token]
+            X_arr[i] = torch.tensor(X_arr[i], dtype=torch.long)
+            
+            y_arr[i] = y_arr[i][:cutoff_len]
+            y_arr[i][-1] = word_map_fr[end_token]
+            y_arr[i] = torch.tensor(y_arr[i], dtype=torch.long)
+
         else:
             X_arr[i] = torch.tensor(X_arr[i], dtype=torch.long)
             y_arr[i] = torch.tensor(y_arr[i], dtype=torch.long)
@@ -114,7 +120,7 @@ def validate(model, valid_dl, loss_func):
 
 from nltk.translate.bleu_score import sentence_bleu
 
-def log_metrics(model, X_data, y_data, index_map_x, index_map_y, file_path):
+def log_metrics(loss_func, model, X_data, y_data, index_map_x, index_map_y, file_path):
 
     with open(file_path, 'w') as f:
 
@@ -136,36 +142,58 @@ def log_metrics(model, X_data, y_data, index_map_x, index_map_y, file_path):
                 y_re = y[..., 1:].contiguous().view(-1)
                 outputs_re = outputs.contiguous().view(-1, outputs.size(-1))
 
-                loss = F.cross_entropy(outputs_re, y_re).item()
-                # loss = F.cross_entropy(outputs_re, y_re).item() * y_re.size(0)
+                loss = loss_func(outputs_re, y_re).item()
+                # loss = loss_func(outputs_re, y_re).item() * y_re.size(0)
 
                 _, y_pred = torch.max(outputs_re, 1)
 
                 perplexity = (2 ** loss)
                 avg_loss += loss
-
-                src_text = X.squeeze().detach().cpu().numpy()
-                src_text = ' '.join([index_map_x[token] for token in src_text if 'pad' not in index_map_x[token].lower()])
                 
-                trg_text = y.squeeze().detach().cpu().numpy()
-                trg_text = ' '.join([index_map_y[token] for token in trg_text if 'pad' not in index_map_y[token].lower()])
+                # src_text = y.squeeze().detach().cpu().numpy()
+                # src_text = ' '.join([index_map_x[token] for token in src_text if 'pad' not in index_map_x[token].lower()])
+                #
+                # trg_text = y.squeeze().detach().cpu().numpy()
+                # trg_text = ' '.join([index_map_y[token] for token in trg_text if 'pad' not in index_map_y[token].lower()])
+                #
+                # pred_text = y_pred.detach().cpu().numpy()
+                # pred_text = ' '.join([index_map_y[token] for token in pred_text if 'pad' not in index_map_y[token].lower()])
 
-                pred_text = y_pred.detach().cpu().numpy()
-                pred_text = ' '.join([index_map_y[token] for token in pred_text if 'pad' not in index_map_y[token].lower()])
+                src = X.squeeze().detach().cpu().numpy()
+                src_text = ''
+                for token in src_text:
+                    src_text += index_map_x[token]
+                    if 'end' in index_map_x[token].lower():
+                        break
+                    src_text += ' '
+                
+                trg = y.squeeze().detach().cpu().numpy()
+                trg_text = ''
+                for token in trg_text:
+                    trg_text += index_map_y[token]
+                    if 'end' in index_map_y[token].lower():
+                        break
+                    trg_text += ' '
+                
+                pred = y_pred.squeeze().detach().cpu().numpy()
+                pred_text = ''
+                for token in pred_text:
+                    pred_text += index_map_y[token]
+                    if 'end' in index_map_y[token].lower():
+                        break
+                    pred_text += ' '
 
                 bleu_score = sentence_bleu(trg_text, pred_text)
                 avg_bleu += bleu_score
-
-                f.write(f'Sentence: \"{src_text}\",\t Translation: \"{pred_text}\",\t Blue_Score: {bleu_score:.2f}\t, Perplexity: {perplexity:.2f}\n')
+                
+                f.write(f'Source: \"{src_text}\",Target: \"{trg_text}\",\nPrediction: \"{pred_text}\",\nBlue_Score: {bleu_score:.2f},\nPerplexity: {perplexity:.2f}\n\n\n')
 
 
             avg_loss /= len(X_data)
             avg_perplexity = 2 ** avg_loss
             avg_bleu /= len(X_data)
 
-            f.write(f'\nAvg. Bleu Score: {avg_bleu:.2f}\n')
-            f.write(f'\nAvg. Perplexity Score: {avg_perplexity:.2f}\n')
-            f.write(f'\n')
+            f.write(f'Avg. Bleu Score: {avg_bleu:.2f},\nAvg. Perplexity Score: {avg_perplexity:.2f}\n')
 
         f.close()
 
@@ -233,9 +261,7 @@ def main(args):
     if torch.cuda.device_count() > 1:
         # dim = 0 [40, xxx] -> [10, ...], [10, ...], [10, ...], [10, ...] on 4 GPUs
         print("Using", torch.cuda.device_count(), "GPUs.", flush=True)
-
         model = nn.DataParallel(model)
-        
         # NOTE: This might be required for RNN based models (when explicity initializing hidden state)
         # model = nn.DataParallel(model, dim=1)
 
@@ -251,16 +277,17 @@ def main(args):
     PATIENCE = args.patience
     
     # NOTE: Ignore pad index
-    criterion = nn.CrossEntropyLoss(ignore_index=word_map_en['<PAD>'])
+    criterion = nn.CrossEntropyLoss(ignore_index=word_map_fr['<PAD>']) ## Bruh, target = fr not en !
 
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+    # optimizer = optim.Adam(model.parameters(), lr=LR)
+    optimizer = optim.AdamW(model.parameters(), lr=LR, amsgrad=True)
     # scheduler = lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=FACTOR, patience=PATIENCE)
     
     LOG_STEP = args.log_step
 
     wandb.init(
-        project="ANLP-Assignment-3",
+        project="ANLP-Assignment-3 (Redo)",
         name="Transformer", 
         config={
             "architecture": "Transformer",
@@ -306,7 +333,7 @@ def main(args):
             loss = criterion(outputs_re, y_re)
 
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             
             train_loss += loss.item()
@@ -320,7 +347,7 @@ def main(args):
 
             if ((curr_step + 1) % LOG_STEP == 0):
                 step_metrics = {
-                    # "step/lr": scheduler.get_lr(), # ReduceLROnPlateau doesn't have get_lr() for some fucking reason
+                    # "step/lr": scheduler.get_lr(), # ReduceLROnPlateau doesn't have get_lr() 
                     # "step/lr": scheduler.get_last_lr(), # more reliable than get_lr() ?
                     "step/lr": scheduler.optimizer.param_groups[0]['lr'], 
 
@@ -358,10 +385,10 @@ def main(args):
             
             torch.save({
                 'epoch': epoch+1,
-                # 'model_state_dict': model.state_dict(),
-                'model_state_dict': model.module.state_dict() if model.module else model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
                 'loss': val_loss,
+                'optimizer_state_dict': optimizer.state_dict(),
+                # 'model_state_dict': model.state_dict(),
+                'model_state_dict': model.module.state_dict() if hasattr(model, 'module') else model.state_dict(),
 
             }, './weights/transformer-best.pt')
 
@@ -413,18 +440,18 @@ def main(args):
     ## Saving Last model
     torch.save({
         'epoch': EPOCHS,
-        # 'model_state_dict': model.state_dict(),
-        'model_state_dict': model.module.state_dict() if model.module else model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
         'loss': test_loss,
+        'optimizer_state_dict': optimizer.state_dict(),
+        # 'model_state_dict': model.state_dict(),
+        'model_state_dict': model.module.state_dict() if hasattr(model, 'module') else model.state_dict(),
 
-    }, './weights/transformer-last.pt')
+    }, f'./weights/transformer-{EPOCHS}-epochs.pt')
     
 
     # ----------------------------------------------------------
 
-    log_metrics(model, X_train, y_train, index_map_en, index_map_fr, file_path='./results/transformer-train.txt')
-    log_metrics(model, X_test, y_test, index_map_en, index_map_fr, file_path='./results/transformer-test.txt')
+    log_metrics(criterion, model, X_train, y_train, index_map_en, index_map_fr, file_path='./results/transformer-train.txt')
+    log_metrics(criterion, model, X_test, y_test, index_map_en, index_map_fr, file_path='./results/transformer-test.txt')
 
     return
 
@@ -467,10 +494,10 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=0,
                         help='Number of Workers between which batch size is divided parallely ?')
 
-    parser.add_argument('--epochs', type=int, default=25,
+    parser.add_argument('--epochs', type=int, default=30,
                         help='Number of Training Epochs')
 
-    parser.add_argument('--learning_rate', type=float, default=0.01,
+    parser.add_argument('--learning_rate', type=float, default=3e-4,
                         help='Learning Rate')
 
     # parser.add_argument('--gamma', type=float, default=0.9,
