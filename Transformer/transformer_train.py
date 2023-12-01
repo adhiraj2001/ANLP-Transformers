@@ -118,14 +118,19 @@ def validate(model, valid_dl, loss_func):
     return val_loss, val_acc
 
 
-from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from torchmetrics.text import SacreBLEUScore
 
 def log_metrics(loss_func, model, X_data, y_data, index_map_x, index_map_y, file_path):
+
+    smooth_1 = SmoothingFunction().method1
+    sacre_bleu = SacreBLEUScore(smooth=True, lowercase=True)
 
     with open(file_path, 'w') as f:
 
         avg_loss = 0
-        avg_bleu = 0
+        avg_bleu_1 = 0
+        avg_bleu_2 = 0
 
         model.eval()
 
@@ -160,40 +165,44 @@ def log_metrics(loss_func, model, X_data, y_data, index_map_x, index_map_y, file
                 # pred_text = ' '.join([index_map_y[token] for token in pred_text if 'pad' not in index_map_y[token].lower()])
 
                 src = X.squeeze().detach().cpu().numpy()
-                src_text = ''
-                for token in src_text:
-                    src_text += index_map_x[token]
-                    if 'end' in index_map_x[token].lower():
+                src_text = []
+                for token in src:
+                    src_text.append(index_map_x[token])
+                    if '<END>' in index_map_x[token]:
                         break
-                    src_text += ' '
                 
                 trg = y.squeeze().detach().cpu().numpy()
-                trg_text = ''
-                for token in trg_text:
-                    trg_text += index_map_y[token]
-                    if 'end' in index_map_y[token].lower():
+                trg_text = []
+                for token in trg:
+                    trg_text.append(index_map_y[token])
+                    if '<END>' in index_map_y[token]:
                         break
-                    trg_text += ' '
                 
                 pred = y_pred.squeeze().detach().cpu().numpy()
-                pred_text = ''
-                for token in pred_text:
-                    pred_text += index_map_y[token]
-                    if 'end' in index_map_y[token].lower():
+                pred_text = []
+                for token in pred:
+                    pred_text.append(index_map_y[token])
+                    if '<END>' in index_map_y[token]:
                         break
-                    pred_text += ' '
-
-                bleu_score = sentence_bleu(trg_text, pred_text)
-                avg_bleu += bleu_score
                 
-                f.write(f'Source: \"{src_text}\",Target: \"{trg_text}\",\nPrediction: \"{pred_text}\",\nBlue_Score: {bleu_score:.2f},\nPerplexity: {perplexity:.2f}\n\n\n')
+                ## ([[reference]], [hypothesis]) should be already tokenized
+                bleu_score_1 = sentence_bleu([trg_text], pred_text, smoothing_function=smooth_1)
+
+                ## ([hypothesis], [[reference]])
+                bleu_score_2 = sacre_bleu([' '.join(pred_text)], [[' '.join(trg_text)]])
+
+                avg_bleu_1 += bleu_score_1
+                avg_bleu_2 += bleu_score_2
+                
+                f.write(f"Source: \"{' '.join(src_text)}\",\nTarget: \"{' '.join(trg_text)}\",\nPrediction: \"{' '.join(pred_text)}\",\nNLTK BLEU Score: {bleu_score_1:.2f},\nSacre BLEU Score: {bleu_score_2:.2f},\nPerplexity: {perplexity:.2f}\n\n\n")
 
 
             avg_loss /= len(X_data)
             avg_perplexity = 2 ** avg_loss
-            avg_bleu /= len(X_data)
+            avg_bleu_1 /= len(X_data)
+            avg_bleu_2 /= len(X_data)
 
-            f.write(f'Avg. Bleu Score: {avg_bleu:.2f},\nAvg. Perplexity Score: {avg_perplexity:.2f}\n')
+            f.write(f'Avg. NLTK BLEU Score: {avg_bleu_1:.2f},\nAvg. Sacre BLEU Score: {avg_bleu_2:.2f},\nAvg. Perplexity Score: {avg_perplexity:.2f}\n')
 
         f.close()
 
@@ -217,15 +226,17 @@ def main(args):
     X_test, y_test = create_sequence(X_test, y_test, word_map_en, word_map_fr, pad_flag=True, cutoff_len=CONTEXT_SIZE)
     X_valid, y_valid = create_sequence(X_valid, y_valid, word_map_en, word_map_fr, pad_flag=True, cutoff_len=CONTEXT_SIZE)
     
+    ## ---------------------
+
     ## Tensor Dataset
     train_tensor = TensorDataset(X_train, y_train) 
     test_tensor = TensorDataset(X_test, y_test) 
     valid_tensor = TensorDataset(X_valid, y_valid) 
-    
+
     ## Data Loaders
     BATCH_SIZE = args.batch_size
     NUM_WORKERS = args.num_workers
-    
+
     ## Add num_workers accordingly ?
     if torch.cuda.device_count() > 0 and NUM_WORKERS == 0:
         NUM_WORKERS = int(torch.cuda.device_count()) * 4
@@ -234,6 +245,8 @@ def main(args):
     train_dl = DataLoader(train_tensor, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
     test_dl = DataLoader(test_tensor, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
     valid_dl = DataLoader(valid_tensor, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+    
+    ## ---------------------
 
     ## Initializing Model
     VOCAB_SIZE_1 = len(word_embeddings_en)
@@ -252,10 +265,10 @@ def main(args):
     DROPOUT = args.dropout
     EPS = args.eps
 
-    # checkpoint = torch.load(f'./weights/transformer-best.pt')
-
     model = Transformer(d_model=EMBED_SIZE_1, n_head=NUM_HEADS, n_layers=NUM_LAYERS, ffn_hidden=HIDDEN_SIZE, context_size=CONTEXT_SIZE, src_vocab_size=VOCAB_SIZE_1, trg_vocab_size=VOCAB_SIZE_2, src_pad=word_map_en['<PAD>'], trg_pad=word_map_fr['<PAD>'], dropout=DROPOUT, eps=EPS)
-
+    
+    ## Load checkpoint if needed (evaluation)
+    # checkpoint = torch.load(f'./weights/transformer-30-epochs.pt')
     # model.load_state_dict(checkpoint['model_state_dict'])
 
     if torch.cuda.device_count() > 1:
@@ -286,6 +299,8 @@ def main(args):
     
     LOG_STEP = args.log_step
 
+    ## ---------------------
+    
     wandb.init(
         project="ANLP-Assignment-3 (Redo)",
         name="Transformer", 
@@ -315,7 +330,6 @@ def main(args):
         
         train_loss = 0
         train_acc = 0
-        
         for idx, (X, y) in enumerate(train_dl):
 
             ## NOTE: Important
@@ -419,24 +433,24 @@ def main(args):
             **val_metrics
         })
 
-    
+
     print()
     print(f"Best Validation --> Epoch: {best_epoch}, Loss: {best_valid_loss:.3f}, Accuracy: {best_valid_acc:.2f}, Perplexity {2 ** best_valid_loss:.2f}\n", flush=True)
     print()
-    
-    
+
+
     test_loss, test_acc = validate(model, test_dl, criterion)
 
     wandb.summary['test_loss'] = test_loss
     wandb.summary['test_accuracy'] = test_acc
     wandb.summary['test_perplexity'] = 2 ** test_loss
     wandb.finish()
-    
+
     # print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.2f}\n", flush=True)
     print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.2f}, Test Perplexity: {2 ** test_loss:.2f}\n", flush=True)
     print()
 
-    
+
     ## Saving Last model
     torch.save({
         'epoch': EPOCHS,
@@ -447,6 +461,7 @@ def main(args):
 
     }, f'./weights/transformer-{EPOCHS}-epochs.pt')
     
+    ## ---------------------
 
     # ----------------------------------------------------------
 
@@ -509,7 +524,7 @@ if __name__ == '__main__':
     parser.add_argument('--factor', type=float, default=0.1,
                         help='Gamma Value')
 
-    parser.add_argument('--patience', type=int, default=3,
+    parser.add_argument('--patience', type=int, default=4,
                         help='Step Size')
 
     parser.add_argument('--log_step', type=int, default=10,

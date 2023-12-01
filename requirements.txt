@@ -4,6 +4,7 @@ scipy
 scikit-learn
 
 nltk
+torchmetrics
 # spacy
 # python3 -m spacy download en_core_web_sm, md
 
