@@ -1,0 +1,67 @@
+
+epoch: 000 | Train Loss: 5.369, Train Accuracy: 0.01, Valid Loss: 4.695713, Valid Accuracy: 0.03
+
+epoch: 001 | Train Loss: 4.395, Train Accuracy: 0.02, Valid Loss: 4.419489, Valid Accuracy: 0.03
+
+epoch: 002 | Train Loss: 3.895, Train Accuracy: 0.02, Valid Loss: 4.274868, Valid Accuracy: 0.03
+
+epoch: 003 | Train Loss: 3.482, Train Accuracy: 0.03, Valid Loss: 4.199516, Valid Accuracy: 0.03
+
+epoch: 004 | Train Loss: 3.133, Train Accuracy: 0.03, Valid Loss: 4.192698, Valid Accuracy: 0.03
+
+epoch: 005 | Train Loss: 2.836, Train Accuracy: 0.03, Valid Loss: 4.238048, Valid Accuracy: 0.03
+
+epoch: 006 | Train Loss: 2.582, Train Accuracy: 0.03, Valid Loss: 4.284548, Valid Accuracy: 0.03
+
+epoch: 007 | Train Loss: 2.367, Train Accuracy: 0.04, Valid Loss: 4.346345, Valid Accuracy: 0.03
+
+epoch: 008 | Train Loss: 2.181, Train Accuracy: 0.04, Valid Loss: 4.455186, Valid Accuracy: 0.03
+
+epoch: 009 | Train Loss: 2.017, Train Accuracy: 0.04, Valid Loss: 4.472733, Valid Accuracy: 0.04
+
+epoch: 010 | Train Loss: 1.814, Train Accuracy: 0.04, Valid Loss: 4.250629, Valid Accuracy: 0.04
+
+epoch: 011 | Train Loss: 1.687, Train Accuracy: 0.04, Valid Loss: 4.256011, Valid Accuracy: 0.04
+
+epoch: 012 | Train Loss: 1.621, Train Accuracy: 0.05, Valid Loss: 4.264271, Valid Accuracy: 0.04
+
+epoch: 013 | Train Loss: 1.569, Train Accuracy: 0.05, Valid Loss: 4.279623, Valid Accuracy: 0.04
+
+epoch: 014 | Train Loss: 1.525, Train Accuracy: 0.05, Valid Loss: 4.298484, Valid Accuracy: 0.04
+
+epoch: 015 | Train Loss: 1.506, Train Accuracy: 0.05, Valid Loss: 4.290721, Valid Accuracy: 0.04
+
+epoch: 016 | Train Loss: 1.485, Train Accuracy: 0.05, Valid Loss: 4.290402, Valid Accuracy: 0.04
+
+epoch: 017 | Train Loss: 1.477, Train Accuracy: 0.05, Valid Loss: 4.290991, Valid Accuracy: 0.04
+
+epoch: 018 | Train Loss: 1.471, Train Accuracy: 0.05, Valid Loss: 4.292097, Valid Accuracy: 0.04
+
+epoch: 019 | Train Loss: 1.467, Train Accuracy: 0.05, Valid Loss: 4.293032, Valid Accuracy: 0.04
+
+epoch: 020 | Train Loss: 1.461, Train Accuracy: 0.05, Valid Loss: 4.293525, Valid Accuracy: 0.04
+
+epoch: 021 | Train Loss: 1.459, Train Accuracy: 0.05, Valid Loss: 4.293664, Valid Accuracy: 0.04
+
+epoch: 022 | Train Loss: 1.458, Train Accuracy: 0.05, Valid Loss: 4.293710, Valid Accuracy: 0.04
+
+epoch: 023 | Train Loss: 1.456, Train Accuracy: 0.05, Valid Loss: 4.293698, Valid Accuracy: 0.04
+
+epoch: 024 | Train Loss: 1.456, Train Accuracy: 0.05, Valid Loss: 4.293674, Valid Accuracy: 0.04
+
+epoch: 025 | Train Loss: 1.455, Train Accuracy: 0.05, Valid Loss: 4.293664, Valid Accuracy: 0.04
+
+epoch: 026 | Train Loss: 1.456, Train Accuracy: 0.05, Valid Loss: 4.293617, Valid Accuracy: 0.04
+
+epoch: 027 | Train Loss: 1.455, Train Accuracy: 0.05, Valid Loss: 4.293565, Valid Accuracy: 0.04
+
+epoch: 028 | Train Loss: 1.456, Train Accuracy: 0.05, Valid Loss: 4.293565, Valid Accuracy: 0.04
+
+epoch: 029 | Train Loss: 1.454, Train Accuracy: 0.05, Valid Loss: 4.293558, Valid Accuracy: 0.04
+
+Best Validation --> Epoch: 5, Loss: 4.193, Accuracy: 0.03, Perplexity 18.29
+
+
+Test Loss: 4.069, Test Accuracy: 0.07, Test Perplexity: 16.79
+
+
